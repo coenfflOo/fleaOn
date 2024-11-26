@@ -11,6 +11,7 @@ import com.ssafy.fleaOn.web.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @RestController
@@ -76,6 +78,26 @@ public class PurchaseApiController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(-1);
         }
     }
+
+    @PostMapping("/batchBuy")
+    public List<Boolean> batchBuy(@RequestBody List<PurchaseRequest> requests) {
+        List<Boolean> results = new ArrayList<>();
+        redisTemplate.executePipelined((RedisCallback<Object>) connection -> {
+            requests.forEach(request -> {
+                try {
+                    // 구매 요청 처리
+                    purchaseService.processPurchaseRequest(request);
+                    results.add(true); // 성공 시 true 추가
+                } catch (Exception e) {
+                    results.add(false); // 실패 시 false 추가
+                }
+            });
+            return null;
+        });
+        return results;
+    }
+
+
 
     @DeleteMapping("/cancel")
     @Operation(summary = "구매 취소 기능", description = "구매 취소를 합니다.")

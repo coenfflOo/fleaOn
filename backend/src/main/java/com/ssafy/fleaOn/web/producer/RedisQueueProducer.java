@@ -6,13 +6,16 @@ import com.ssafy.fleaOn.web.dto.TradeRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service
 public class RedisQueueProducer {
 
-    private static final Logger logger = LoggerFactory.getLogger(RedisQueueConsumer.class);
+//    private static final Logger logger = LoggerFactory.getLogger(RedisQueueConsumer.class);
 
     // Redis 큐 이름 상수 정의
     public static final String PURCHASE_QUEUE = "purchaseQueue";
@@ -25,6 +28,16 @@ public class RedisQueueProducer {
 
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
+
+    // 대량의 구매 요청을 큐에 추가하는 메서드 (파이프라이닝 적용)
+    public void sendPurchaseRequests(List<PurchaseRequest> requests) {
+        redisTemplate.executePipelined((RedisCallback<Object>) connection -> {
+            for (PurchaseRequest request : requests) {
+                redisTemplate.opsForList().rightPush(PURCHASE_QUEUE, request);
+            }
+            return null;
+        });
+    }
 
     // 구매 요청을 큐에 추가하는 메서드
     public void sendPurchaseRequest(PurchaseRequest request) {
@@ -53,7 +66,7 @@ public class RedisQueueProducer {
 
     // 거래 파기 요청을 큐에 추가하는 메서드
     public void sendBreakTradeRequest(int chatId, int userId) {
-        logger.info("Pushing BreakTradeRequest to Redis queue: chatId={}, userId={}", chatId, userId);
+//        logger.info("Pushing BreakTradeRequest to Redis queue: chatId={}, userId={}", chatId, userId);
         redisTemplate.opsForList().rightPush(BREAK_TRADE_QUEUE, new int[]{chatId, userId});
     }
 

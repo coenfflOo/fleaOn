@@ -107,6 +107,7 @@ import com.ssafy.fleaOn.web.service.RedisService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -132,15 +133,44 @@ public class RedisQueueConsumer {
     @Autowired
     private RedisService redisService;
 
+//    @Scheduled(fixedDelay = 500)
+//    public void handlePurchaseRequest() {
+//        Object data = redisTemplate.opsForList().leftPop(PURCHASE_QUEUE);
+//        if (data != null) {
+//            PurchaseRequest request = objectMapper.convertValue(data, PurchaseRequest.class);
+//            int result = purchaseService.processPurchaseRequest(request);
+//            redisTemplate.opsForValue().set("purchaseResult:" + request.getUserId() + ":" + request.getProductId(), result);
+//        }
+//    }
     @Scheduled(fixedDelay = 500)
-    public void handlePurchaseRequest() {
-        Object data = redisTemplate.opsForList().leftPop(PURCHASE_QUEUE);
-        if (data != null) {
-            PurchaseRequest request = objectMapper.convertValue(data, PurchaseRequest.class);
-            int result = purchaseService.processPurchaseRequest(request);
-            redisTemplate.opsForValue().set("purchaseResult:" + request.getUserId() + ":" + request.getProductId(), result);
-        }
+    public void handlePurchaseRequests() {
+        redisTemplate.executePipelined((RedisCallback<Object>) connection -> {
+            // Redis 리스트에서 데이터 가져오기
+            List<Object> requests = redisTemplate.opsForList().range(PURCHASE_QUEUE, 0, -1);
+
+            if (requests != null) {
+                for (Object data : requests) {
+                    try {
+                        // LinkedHashMap 데이터를 PurchaseRequest로 변환
+                        PurchaseRequest request = objectMapper.convertValue(data, PurchaseRequest.class);
+
+                        // 서비스 로직 호출
+                        int result = purchaseService.processPurchaseRequest(request);
+
+                        // 결과를 Redis에 저장
+                        redisTemplate.opsForValue().set("purchaseResult:" + request.getUserId() + ":" + request.getProductId(), result);
+                    } catch (IllegalArgumentException e) {
+                        logger.error("Failed to convert data to PurchaseRequest: {}", data, e);
+                    }
+                }
+            }
+
+            // 처리 완료 후 큐 비우기
+            redisTemplate.opsForList().trim(PURCHASE_QUEUE, 1, 0);
+            return null;
+        });
     }
+
 
     @Scheduled(fixedDelay = 500)
     public void handleCancelPurchaseRequest() throws JsonProcessingException {
