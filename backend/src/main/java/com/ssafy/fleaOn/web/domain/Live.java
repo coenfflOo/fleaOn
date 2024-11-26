@@ -52,15 +52,15 @@ public class Live {
     private RegionInfo regionInfo;
 
     @Builder
-    public Live(String title, LocalDateTime liveDate, String liveThumbnail, String tradePlace, User seller, RegionInfo regionInfo, int isLive, int viewCount, User seller2) {
+    public Live(String title, LocalDateTime liveDate, String liveThumbnail, String tradePlace, User seller, RegionInfo regionInfo, int isLive, int viewCount) {
         this.title = title;
-        this.liveDate = liveDate;
+        this.liveDate = liveDate != null ? liveDate : LocalDateTime.now(); // 기본값 설정
         this.liveThumbnail = liveThumbnail;
         this.tradePlace = tradePlace;
         this.seller = seller;
         this.regionInfo = regionInfo;
         this.isLive = isLive;
-        this.viewCount = 0;
+        this.viewCount = viewCount;
     }
 
     public void update(String title, LocalDateTime liveDate, String liveThumbnail, String tradePlace, RegionInfo regionInfo) {

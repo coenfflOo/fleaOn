@@ -52,18 +52,18 @@ public class PurchaseService {
 
     @Transactional
     public int processPurchaseRequest(PurchaseRequest request) { // 구매하기
-        logger.info("Processing purchase request for productId: {} and userId: {}", request.getProductId(), request.getUserId());
+//        logger.info("Processing purchase request for productId: {} and userId: {}", request.getProductId(), request.getUserId());
         Product product = productRepository.findById(request.getProductId())
                 .orElseThrow(() -> new IllegalArgumentException("Invalid product ID"));
 
         if (product.getCurrentBuyerId() == request.getUserId()) {
-            logger.warn("User {} is already the buyer for product {}", request.getUserId(), request.getProductId());
+//            logger.warn("User {} is already the buyer for product {}", request.getUserId(), request.getProductId());
             return -2; // Already the buyer
         }
 
         Optional<Reservation> existingReservation = reservationRepository.findByProduct_ProductIdAndUser_UserId(request.getProductId(), request.getUserId());
         if (existingReservation.isPresent()) {
-            logger.warn("User {} is already reserved for product {}", request.getUserId(), request.getProductId());
+//            logger.warn("User {} is already reserved for product {}", request.getUserId(), request.getProductId());
             return -3; // Already reserved
         }
 
@@ -72,11 +72,11 @@ public class PurchaseService {
             productRepository.save(product);
 
             Optional<List<Trade>> trades = tradeRepository.findByBuyerIdAndSellerIdAndLiveId(request.getUserId(), product.getSeller().getUserId(), product.getLive().getLiveId());
-            logger.info("Trades found: {}", trades.isPresent() && !trades.get().isEmpty());
+//            logger.info("Trades found: {}", trades.isPresent() && !trades.get().isEmpty());
 
             if (trades.isPresent() && !trades.get().isEmpty()) {
                 Trade trade = trades.get().get(0);
-                logger.info("Processing confirm for tradeId: {}", trade.getTradeId());
+//                logger.info("Processing confirm for tradeId: {}", trade.getTradeId());
 
                 TradeRequest tradeRequest = TradeRequest.builder()
                         .buyerId(request.getUserId())
@@ -89,7 +89,7 @@ public class PurchaseService {
                         .build();
 
                 processConfirmPurchaseRequest(tradeRequest);
-                logger.info("Purchase confirmed automatically for userId: {}", request.getUserId());
+//                logger.info("Purchase confirmed automatically for userId: {}", request.getUserId());
                 return 7;
             }
             return 0; // 구매 예정자
@@ -106,6 +106,25 @@ public class PurchaseService {
             return 6; // 예약 불가능
         }
     }
+//    @Transactional
+//    public boolean processPurchaseRequest(int productId, int userId) {
+//        try {
+//            Product product = productRepository.findById(productId)
+//                    .orElseThrow(() -> new IllegalArgumentException("Invalid product ID"));
+//            if (product.isEnd()) {
+//                throw new IllegalStateException("Product is no longer available for reservation.");
+//            }
+//
+//            product.setCurrentBuyerId(userId);
+//            product.setReservationCount(product.getReservationCount() + 1);
+//            productRepository.save(product);
+//
+//            return true;
+//        } catch (Exception e) {
+//            System.err.println("Error processing request for userId: " + userId + ". Error: " + e.getMessage());
+//            return false;
+//        }
+//    }
 
     @Transactional
     public PurchaseCancleResponse cancelPurchaseProduct(PurchaseRequest request) { // 구매 취소
